@@ -27,11 +27,19 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Merge PR branch into main
+      - name: Fetch PR source branch
         if: github.event_name == 'pull_request_target'
         run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git merge --no-ff ${{ github.event.pull_request.head.ref }}
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo  ${{ github.event.pull_request.head.repo.clone_url }}
+            echo ${{ github.event.pull_request.head.ref }}
+            git remote add external_repo ${{ github.event.pull_request.head.repo.clone_url }}
+            git fetch external_repo ${{ github.event.pull_request.head.ref }}:pr_branch
+          else
+            # 如果是本仓库的 PR，直接从 origin fetch
+            echo ${{ github.event.pull_request.head.ref }}
+            git fetch origin ${{ github.event.pull_request.head.ref }}:pr_branch
+          fi
       
       - name: Copy poetry.lock to root directory
         run: |
@@ -85,8 +93,16 @@ jobs:
       - name: Merge PR branch into main
         if: github.event_name == 'pull_request_target'
         run: |
-          git fetch origin ${{ github.event.pull_request.head.ref }}
-          git merge --no-ff ${{ github.event.pull_request.head.ref }}
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo  ${{ github.event.pull_request.head.repo.clone_url }}
+            echo ${{ github.event.pull_request.head.ref }}
+            git remote add external_repo ${{ github.event.pull_request.head.repo.clone_url }}
+            git fetch external_repo ${{ github.event.pull_request.head.ref }}:pr_branch
+          else
+            # 如果是本仓库的 PR，直接从 origin fetch
+            echo ${{ github.event.pull_request.head.ref }}
+            git fetch origin ${{ github.event.pull_request.head.ref }}:pr_branch
+          fi
       
       - name: Copy poetry.lock to root directory
         run: |
