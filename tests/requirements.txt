@@ -1,0 +1,4 @@
+wikipedia
+docx2txt
+olefile
+pytest-rerunfailures

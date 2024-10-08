@@ -1,0 +1,118 @@
+name: LazyLLM ci
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - ".git*"
+      - "docs/assets/**"
+env:
+  CI_PATH: '/home/mnt/platform_ci/GitHub/${{ github.repository }}/${GITHUB_RUN_NUMBER}'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  Clone:
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]')
+      && !contains(github.event.pull_request.title, '[skip ci]')
+    runs-on: tps_sco_nv
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build doc
+        run: |
+          set -e
+          pip install -r requirements.txt
+          pip install -r docs/requirements.txt
+          python docs/add_docstrings.py
+
+      - name: Create custom directory
+        run: |
+          set -ex
+          echo ${{ env.CI_PATH }}
+          mkdir -p ${{ env.CI_PATH }}
+
+      - name: Clean custom directory
+        run: |
+          set -ex
+          if [ -d "${{ env.CI_PATH }}" ]; then
+            rm -rf ${{ env.CI_PATH }}/*
+          fi
+
+      - name: Move code to custom directory
+        run: |
+          set -ex
+          mv $GITHUB_WORKSPACE/* ${{ env.CI_PATH }}/
+
+  BasicTests:
+    runs-on: tps_sco_nv
+    needs: [Clone]
+    steps:
+      - name: RunTests
+        run: |
+          set -ex
+          cd ${{ env.CI_PATH }}
+          pip install -r tests/requirements.txt
+          realpath .
+          env | grep '^SCC'
+          export LAZYLLM_SCO_ENV_NAME=lazyllm
+          export LAZYLLM_DEFAULT_LAUNCHER=sco
+          export PYTHONPATH=$PWD:$PYTHONPATH
+          export LAZYLLM_DATA_PATH=/mnt/lustre/share_data/lazyllm/data/
+          export LAZYLLM_MODEL_PATH=/mnt/lustre/share_data/lazyllm/models
+          python -m pytest --lf --last-failed-no-failures=all --reruns=2 -v tests/basic_tests/
+
+  AdvancedStandardTests:
+    runs-on: tps_sco_nv
+    needs: [Clone]
+    steps:
+      - name: RunTests
+        run: |
+          cd ${{ env.CI_PATH }}
+          pip install -r tests/requirements.txt
+          env | grep '^SCC'
+          export LAZYLLM_SCO_ENV_NAME=lazyllm
+          export LAZYLLM_DEFAULT_LAUNCHER=sco
+          export PYTHONPATH=$PWD:$PYTHONPATH
+          export LAZYLLM_DATA_PATH=/mnt/lustre/share_data/lazyllm/data/
+          export LAZYLLM_MODEL_PATH=/mnt/lustre/share_data/lazyllm/models
+          source ~/ENV/env.sh
+          python -m pytest --lf --last-failed-no-failures=all --reruns=2 -v tests/advanced_tests/standard_test/
+
+  AdvancedFullTests:
+    runs-on: tps_sco_nv
+    needs: [Clone]
+    steps:
+      - name: RunTests
+        run: |
+          cd ${{ env.CI_PATH }}
+          env | grep '^SCC'
+          export LAZYLLM_SCO_ENV_NAME=lazyllm
+          export LAZYLLM_DEFAULT_LAUNCHER=sco
+          export PYTHONPATH=$PWD:$PYTHONPATH
+          export LAZYLLM_DATA_PATH=/mnt/lustre/share_data/lazyllm/data/
+          export LAZYLLM_MODEL_PATH=/mnt/lustre/share_data/lazyllm/models
+          python -m pytest --lf --last-failed-no-failures=all --reruns=2 -v tests/advanced_tests/full_test/
+
+  ChargeTests:
+    runs-on: tps_sco_nv
+    needs: [ Clone ]
+    steps:
+      - name: RunTests
+        run: |
+          cd ${{ env.CI_PATH }}
+          pip install -r tests/requirements.txt
+          export PYTHONPATH=$PWD:$PYTHONPATH
+          export LAZYLLM_DATA_PATH=/mnt/lustre/share_data/lazyllm/data/
+          export LAZYLLM_MODEL_PATH=/mnt/lustre/share_data/lazyllm/models
+          source ~/ENV/env.sh
+          python -m pytest --lf --last-failed-no-failures=all --reruns=2 -v tests/charge_tests
