@@ -1,3 +1,0 @@
-[submodule "LazyLLM-Env"]
-	path = LazyLLM-Env
-	url = https://github.com/LazyAGI/LazyLLM-Env.git
