@@ -53,6 +53,8 @@ jobs:
           cd LazyLLM-Env &&git branch 
           cd ..
           cp LazyLLM-Env/poetry.lock .
+          cat .gitignore
+          cat pyproject.toml
 
       - name: Set up python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
@@ -120,6 +122,9 @@ jobs:
           cd LazyLLM-Env &&git branch 
           cd ..
           cp LazyLLM-Env/poetry.lock .
+          cat .gitignore
+          cat pyproject.toml
+
 
       - name: Set up python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
